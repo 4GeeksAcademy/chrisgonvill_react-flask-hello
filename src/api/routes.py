@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify, url_for, Blueprint
 from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
+import json
 
 api = Blueprint('api', __name__)
 
@@ -12,11 +13,35 @@ api = Blueprint('api', __name__)
 CORS(api)
 
 
-@api.route('/hello', methods=['POST', 'GET'])
-def handle_hello():
+@api.route('/signup', methods=['POST'])
+def create_one_user():
+    # body = json.loads(request.data)
 
-    response_body = {
-        "message": "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
+    email = request.json.get('email')
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+            return jsonify({'error': 'Email already exists.'}), 409
+    
+    body = request.json
+    new_user = User(
+        email = body["email"],
+        username = body["username"],
+        name = body["name"],
+        address = body["address"],
+        phone = body["phone"],
+        password = body["password"],
+        is_admin = body["is_admin"]
+    )
+    db.session.add(new_user)
+    db.session.commit()
+
+    user_ok = {
+        "email" : body["email"],
+        "username" : body["username"],
+        "name" : body["name"],
+        "address" : body["address"],
+        "phone" : body["phone"],
+        "password" : body["password"],
+        "is_admin" : body["is_admin"]
     }
-
-    return jsonify(response_body), 200
+    return jsonify({"msg": "user created succesfull", "user_added": user_ok }), 200
