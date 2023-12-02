@@ -6,12 +6,17 @@ from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 import json
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import get_jwt_identity
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+
+from datetime import timedelta
+from flask_jwt_extended import JWTManager
+from flask_bcrypt import Bcrypt
+from flask import Flask, request, jsonify, url_for, send_from_directory
+
 # from flask_jwt_extended import JWTManager
 
 api = Blueprint('api', __name__)
+bcrypt = Bcrypt()
 
 # api.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
 # jwt = JWTManager(api)
@@ -27,22 +32,24 @@ def create_one_user():
     email = request.json.get('email')
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
-            return jsonify({'error': 'Email already exists.'}), 409
+        return jsonify({'error': 'Email already exists.'}), 409
     
     body = request.json
+    raw_password = request.json.get('password')
+    password_hash = bcrypt.generate_password_hash(raw_password).decode('utf-8')
     new_user = User(
         email = body["email"],
         username = body["username"],
         name = body["name"],
         address = body["address"],
         phone = body["phone"],
-        password = body["password"],
+        password = password_hash,
         is_admin = body["is_admin"]
-    )
+        )
     db.session.add(new_user)
     db.session.commit()
 
-    user_ok = {
+    ok_to_share = {
         "email" : body["email"],
         "username" : body["username"],
         "name" : body["name"],
@@ -50,9 +57,9 @@ def create_one_user():
         "phone" : body["phone"],
         "password" : body["password"],
         "is_admin" : body["is_admin"]
-    }
+        }
 
-    return jsonify({"msg": "user created succesfull", "user_added": user_ok }), 200
+    return jsonify({"msg": "user created succesfull", "user_added": ok_to_share }), 200
 
 
 
