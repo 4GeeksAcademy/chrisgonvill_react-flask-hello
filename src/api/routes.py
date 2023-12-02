@@ -19,7 +19,7 @@ api = Blueprint('api', __name__)
 bcrypt = Bcrypt()
 
 # api.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
-# jwt = JWTManager(api)
+jwt = JWTManager()
 
 # Allow CORS requests to this API
 CORS(api)
@@ -66,10 +66,38 @@ def create_one_user():
 
 @api.route("/login", methods=["POST"])
 def login():
-    email = request.json.get("email", None)
-    password = request.json.get("password", None)
-    if email != "test" or password != "test":
+    email = request.json.get("email")
+    password = request.json.get("password")
+
+    if not email or not password: 
         return jsonify({"msg": "Bad email or password"}), 401
 
-    access_token = create_access_token(identity=email)
-    return jsonify(access_token=access_token)
+    existing_user = User.query.filter_by(email=email).first()
+    if not existing_user: 
+        return jsonify({"msg":"Email not found"})
+    password_db = existing_user.password
+    true_or_false = bcrypt.check_password_hash(password_db, password)
+    if not true_or_false:
+        return jsonify({"msg": "Wrong password"}),400
+
+    user_id = existing_user.id
+
+    access_token = create_access_token(identity=user_id)
+    return jsonify({"access_token":access_token, "msg": "Success" }),200
+
+@api.route("/users")
+@jwt_required()
+def get_users(): 
+    current_user_id = get_jwt_identity()
+    if current_user_id:
+        users = User.query.all()
+        user_list = []
+        for user in users:
+            user_dict = {
+                'id': user.id,
+                'email': user.email
+            }
+            user_list.append(user_dict)
+        return jsonify(user_list), 200
+    else:
+        return {"Error": "Token inválido o no proporcionado"}, 401
