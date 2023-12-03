@@ -101,3 +101,11 @@ def get_users():
         return jsonify(user_list), 200
     else:
         return {"Error": "Token inválido o no proporcionado"}, 401
+
+
+@api.route("/logout", methods=["POST"])
+@jwt_required()
+def logout():
+    current_user_id = get_jwt_identity()
+    access_token = create_access_token(identity=current_user_id, expires_delta=timedelta(seconds=1))
+    return jsonify({"msg": "Logout exitoso", "access_token": access_token}), 200
